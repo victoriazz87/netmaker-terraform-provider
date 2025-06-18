@@ -28,7 +28,7 @@ A fully automated installer and integration toolkit for using [Netmaker](https:/
 ## 🛠 Installation & Usage
 
 ```bash
-git clone https://github.com/YOURNAME/netmaker-terraform-provider.git
+git clone https://github.com/victoriazz87/netmaker-terraform-provider.git
 cd netmaker-terraform-provider
 chmod +x setup.sh uninstall.sh
 ./setup.sh
