@@ -8,7 +8,7 @@ A fully automated installer and integration toolkit for using [Netmaker](https:/
 - ⚙️ Terraform v1.8.5 provisioning
 - 🌍 Example `.tf` configuration files
 - 🧪 Flask Web GUI scaffold (under development)
-- 🔐 MIT / Apache 2.0 licensed — your choice
+- 🔐 MIT
 
 > ⚠️ GUI is **not yet complete** — this repo serves as a development starter.  
 > ✅ Installer and Terraform provider work flawlessly.
