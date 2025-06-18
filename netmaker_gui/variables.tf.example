@@ -1,0 +1,9 @@
+variable "netmaker_api_url" {
+  description = "Netmaker API endpoint"
+  type        = string
+}
+variable "netmaker_api_token" {
+  description = "Netmaker API token"
+  type        = string
+  sensitive   = true
+}

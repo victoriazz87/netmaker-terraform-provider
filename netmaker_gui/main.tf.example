@@ -1,0 +1,16 @@
+terraform {
+  required_providers {
+    netmaker = {
+      source  = "local/netmaker"
+      version = "1.0.0"
+    }
+  }
+}
+provider "netmaker" {
+  api_url   = var.netmaker_api_url
+  api_token = var.netmaker_api_token
+}
+resource "netmaker_network" "example" {
+  name         = "terraform_demo"
+  addressrange = "10.77.0.0/24"
+}

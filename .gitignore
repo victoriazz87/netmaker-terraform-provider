@@ -1,0 +1,12 @@
+*.zip
+*.tar.gz
+*.pyc
+__pycache__/
+.terraform/
+terraform-provider-netmaker
+.env
+.env.*
+*.log
+.idea/
+.vscode/
+.DS_Store
