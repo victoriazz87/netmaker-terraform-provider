@@ -141,4 +141,6 @@ If this project helped you:
     Open PRs and issues to contribute
 
 🧠 Thank you for using the Netmaker Terraform Provider!
-# netmaker-terraform-provider
+### 🔍 Keywords
+
+`netmaker` `terraform` `vpn` `installer` `automation` `infrastructure` `devops` `provider` `bash` `gui` `docker` `linux` `web-ui`
