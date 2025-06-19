@@ -58,21 +58,15 @@ fi
 
 echo "${GREEN}✅ Go $GO_VERSION installed and active: $(go version)$RESET"
 
-# Set script and working directory
+# 3. Remove all go.mod/go.sum/go.work files from this script directory and its subdirectories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKDIR="$SCRIPT_DIR/netmaker_gui"
+echo "${YELLOW}🧼 Removing go.mod/go.sum/go.work files from directory: $SCRIPT_DIR and its subdirectories...$RESET"
+find "$SCRIPT_DIR" -type f \( -name "go.mod" -o -name "go.sum" -o -name "go.work" \) -exec rm -f {} +
+echo "${GREEN}✅ Go module files removed locally.$RESET"
 
-# Ensure working directory exists
-mkdir -p "$WORKDIR"
-
-# 3. Remove all go.mod/go.sum/go.work files from the working directory
-echo "${YELLOW}🧼 Removing go.mod/go.sum/go.work files from directory: $WORKDIR and its subdirectories...$RESET"
-find "$WORKDIR" -type f \( -name "go.mod" -o -name "go.sum" -o -name "go.work" \) -exec rm -f {} +
-echo "${GREEN}✅ Go module files removed from work directory.$RESET"
-
-# 3.1. Create a new go.mod with Go 1.22 in the working directory
-echo "${GREEN}🧪 Creating new go.mod with version 1.22 in $WORKDIR...$RESET"
-cat > "$WORKDIR/go.mod" <<EOF
+# 4. Create a new go.mod with Go 1.22
+echo "${GREEN}🧪 Creating new go.mod with version 1.22...$RESET"
+cat > "$SCRIPT_DIR/go.mod" <<EOF
 module terraform-provider-netmaker
 go 1.22
 require github.com/hashicorp/terraform-plugin-sdk/v2 v2.31.0
@@ -117,11 +111,20 @@ echo "${GREEN}Flask found!$RESET"
 # 6. Terraform check/installation
 if ! command -v terraform &>/dev/null; then
   echo "${YELLOW}🔧 Installing Terraform...$RESET"
+
+  # Ensure 'unzip' is available
+  if ! command -v unzip &>/dev/null; then
+    echo "${YELLOW}📦 'unzip' not found. Installing...$RESET"
+    sudo apt update
+    sudo apt install -y unzip
+  fi
+
   curl -fsSL https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_amd64.zip -o tf.zip
   unzip tf.zip
   sudo mv terraform /usr/local/bin/
   rm -f tf.zip
 fi
+
 echo "${GREEN}Terraform available: $(terraform version | head -1)$RESET"
 
 # 7. Create directories
@@ -435,4 +438,3 @@ ${GREEN}Thank you for using the Netmaker Terraform provider!$RESET
 "
 
 exit 0
-
