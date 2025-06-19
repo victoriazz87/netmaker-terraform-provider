@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -euxo pipefail
 
 # Colors
 RED=$(tput setaf 1)
@@ -11,26 +11,32 @@ BOLD=$(tput bold)
 
 # Paths and variables
 WORKDIR="$HOME/netmaker_gui"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_PATH="$HOME/.terraform.d/plugins/registry.terraform.io/local/netmaker/1.0.0/linux_amd64"
 
-# --- Help & clean
+# --- Help & clean (safe preview only)
 if [[ "${1:-}" == "clean" ]]; then
-  echo "${YELLOW}🧹 Removing all build artifacts and go.mod/go.sum...$RESET"
-  rm -rf "$WORKDIR" terraform-provider-netmaker "$PLUGIN_PATH"
-  find "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" -type f \( -name "go.mod" -o -name "go.sum" -o -name "go.work" \) -exec rm -f {} +
-  echo "${GREEN}✔️ Cleanup complete (work directory, plugin, and mod files removed).$RESET"
+  echo "${YELLOW}⚠️ Clean mode (preview only): No files will be deleted.$RESET"
+  echo
+
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  echo "${BLUE}📦 Would remove directory:$RESET $WORKDIR"
+  echo "${BLUE}📦 Would remove plugin path: $RESET $PLUGIN_PATH"
+  echo "${BLUE}📦 Would remove binary:$RESET $SCRIPT_DIR/terraform-provider-netmaker"
+  
+  echo "${BLUE}📄 Would remove mod/work files from root (if present):$RESET"
+  for file in "$SCRIPT_DIR/go.mod" "$SCRIPT_DIR/go.sum" "$SCRIPT_DIR/go.work"; do
+    if [[ -f "$file" ]]; then
+      echo " - $file"
+    fi
+  done
+
+  echo
+  echo "${GREEN}📝 No files deleted. This was a preview of what 'clean' would do.$RESET"
+  echo "${YELLOW}👉 To actually delete, modify the script or use a '--force' flag (not implemented).$RESET"
   exit 0
 fi
-
-if [[ "${1:-}" == "help" ]]; then
-  echo "${BOLD}Käyttö:${RESET} ./setup.sh [clean|help]"
-  echo "  clean   - Removes all build artifacts, go.mod/go.sum files, and plugins"
-  echo "  help    - Displays this help message"
-  exit 0
-fi
-
-echo "${BLUE}${BOLD}Netmaker Terraform Provider - automatic installation$RESET"
-echo "---------------------------------------------------"
 
 # 1. Remove all old Go installations
 echo "${YELLOW}⬇️ Removing old Go versions (snap, apt)...$RESET"
@@ -58,11 +64,11 @@ fi
 
 echo "${GREEN}✅ Go $GO_VERSION installed and active: $(go version)$RESET"
 
-# 3. Remove all go.mod/go.sum/go.work files from this script directory and its subdirectories
+# 3. Remove go.mod/go.sum/go.work files only from the script root dir (NOT subdirectories)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "${YELLOW}🧼 Removing go.mod/go.sum/go.work files from directory: $SCRIPT_DIR and its subdirectories...$RESET"
-find "$SCRIPT_DIR" -type f \( -name "go.mod" -o -name "go.sum" -o -name "go.work" \) -exec rm -f {} +
-echo "${GREEN}✅ Go module files removed locally.$RESET"
+echo "${YELLOW}🧼 Removing go.mod/go.sum/go.work from script root: $SCRIPT_DIR$RESET"
+rm -f "$SCRIPT_DIR/go.mod" "$SCRIPT_DIR/go.sum" "$SCRIPT_DIR/go.work"
+echo "${GREEN}✅ Go module files removed from root (not touching provider directory).$RESET"
 
 # 4. Create a new go.mod with Go 1.22
 echo "${GREEN}🧪 Creating new go.mod with version 1.22...$RESET"
@@ -127,11 +133,9 @@ fi
 
 echo "${GREEN}Terraform available: $(terraform version | head -1)$RESET"
 
-# 7. Create directories
-mkdir -p "$WORKDIR/webgui"
-cd "$WORKDIR"
+mkdir -p "$SCRIPT_DIR/webgui"
+cd "$SCRIPT_DIR"
 
-# 8. Example .env file and main.tf
 cat > .env.example <<EOF
 NETMAKER_API_URL=https://netmaker.example.com
 NETMAKER_API_TOKEN=PASTE_YOUR_TOKEN_HERE
@@ -146,14 +150,17 @@ terraform {
     }
   }
 }
+
 provider "netmaker" {
   api_url   = var.netmaker_api_url
   api_token = var.netmaker_api_token
 }
+
 resource "netmaker_network" "example" {
   name         = "terraform_demo"
   addressrange = "10.77.0.0/24"
 }
+
 EOF
 
 cat > variables.tf.example <<EOF
@@ -161,15 +168,19 @@ variable "netmaker_api_url" {
   description = "Netmaker API endpoint"
   type        = string
 }
+
 variable "netmaker_api_token" {
   description = "Netmaker API token"
   type        = string
   sensitive   = true
 }
+
 EOF
 
 # 9. Example template for Flask web GUI
-cat > webgui/app.py <<EOF
+mkdir -p "$SCRIPT_DIR/webgui"
+
+cat > "$SCRIPT_DIR/webgui/app.py" <<EOF
 from flask import Flask
 app = Flask(__name__)
 
@@ -182,13 +193,13 @@ if __name__ == "__main__":
 EOF
 
 # 10. Create provider source code
-cat > go.mod <<'EOF'
+cat > "$SCRIPT_DIR/go.mod" <<'EOF'
 module terraform-provider-netmaker
 go 1.22
 require github.com/hashicorp/terraform-plugin-sdk/v2 v2.31.0
 EOF
 
-cat > main.go <<'EOF'
+cat > "$SCRIPT_DIR/main.go" <<'EOF'
 package main
 import (
   "github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
@@ -201,8 +212,8 @@ func main() {
 }
 EOF
 
-mkdir -p provider
-cat > provider/provider.go <<'EOF'
+mkdir -p "$SCRIPT_DIR/provider"
+cat > "$SCRIPT_DIR/provider/provider.go" <<'EOF'
 package provider
 import (
   "context"
@@ -239,7 +250,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 }
 EOF
 
-cat > provider/resource_network.go <<'EOF'
+cat > "$SCRIPT_DIR/provider/resource_network.go" <<'EOF'
 package provider
 import (
   "bytes"
@@ -366,7 +377,7 @@ func resourceNetworkDelete(d *schema.ResourceData, meta interface{}) error {
 EOF
 
 # 11. Dockerfile for the provider
-cat > Dockerfile <<'EOF'
+cat > "$SCRIPT_DIR/Dockerfile" <<'EOF'
 FROM golang:1.22.3 AS builder
 WORKDIR /app
 COPY . .
@@ -382,24 +393,28 @@ ENTRYPOINT ["terraform"]
 EOF
 
 # 12. Version file and changelog
-cat > VERSION <<EOF
+cat > "$SCRIPT_DIR/VERSION" <<EOF
 1.0.0-$(date +%Y%m%d)
 EOF
-cat > CHANGELOG.md <<EOF
+cat > "$SCRIPT_DIR/CHANGELOG.md" <<EOF
 # Changes
 - $(date) - Automatic build, basic provider, and Docker installation
 EOF
 
 # 13. Build steps
 echo "${BLUE}🐳 Building Docker image...$RESET"
-docker build -t terraform-netmaker .
+docker build -t terraform-netmaker "$SCRIPT_DIR"
 
 echo "${BLUE}🔨 Building provider locally...$RESET"
-go mod tidy
-go build -o terraform-provider-netmaker
+(cd "$SCRIPT_DIR" && go mod tidy && go build -o terraform-provider-netmaker)
+
+if [[ ! -f "$SCRIPT_DIR/terraform-provider-netmaker" ]]; then
+  echo "${RED}❌ Build failed: terraform-provider-netmaker binary not found!$RESET"
+  exit 1
+fi
 
 mkdir -p "$PLUGIN_PATH"
-cp terraform-provider-netmaker "$PLUGIN_PATH/"
+cp "$SCRIPT_DIR/terraform-provider-netmaker" "$PLUGIN_PATH/"
 chmod +x "$PLUGIN_PATH/terraform-provider-netmaker"
 echo "${GREEN}✅ Provider installed to path: $PLUGIN_PATH/terraform-provider-netmaker$RESET"
 
